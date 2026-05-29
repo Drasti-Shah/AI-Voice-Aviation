@@ -28,10 +28,13 @@ log = logging.getLogger("aviation-demo")
 
 app = FastAPI()
 
-# Open CORS for local Next.js dev. Tighten for prod.
+# CORS origins. Defaults to local Next.js dev; in production set CORS_ORIGINS to
+# a comma-separated list of allowed origins (e.g. your deployed frontend URL).
+_default_origins = "http://localhost:3000,http://127.0.0.1:3000"
+_cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", _default_origins).split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

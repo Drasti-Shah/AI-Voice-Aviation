@@ -1,0 +1,71 @@
+# Render Blueprint — deploys the AI Voice Aviation stack as TWO web services.
+# In Render: New + → "Blueprint" → pick this repo. Then fill in the secret env
+# vars marked `sync: false` (Render will prompt for them).
+#
+# Note: there is NO ngrok/tunnel service here. On Render the backend already has
+# a public HTTPS URL, so the tunnel from all-start.bat is not needed.
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend — FastAPI (uvicorn). Public URL is used directly by Twilio.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: aviation-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      # The backend's own public hostname (e.g. aviation-backend.onrender.com).
+      # Used to build the Twilio TwiML/WebSocket URLs. Auto-filled by Render.
+      - key: PUBLIC_HOST
+        fromService:
+          type: web
+          name: aviation-backend
+          property: host
+      # Allowed CORS origin(s) for the browser frontend. Set this to your
+      # frontend's URL after its first deploy, e.g.
+      #   https://aviation-frontend.onrender.com
+      - key: CORS_ORIGINS
+        sync: false
+      # --- Secrets (Render will prompt; never commit these) ---
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: AVIATIONSTACK_API_KEY
+        sync: false
+      # --- Optional overrides (have sensible defaults in code) ---
+      # - key: OPENAI_MODEL
+      #   value: gpt-4o-mini
+      # - key: SARVAM_LANG
+      #   value: en-IN
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Next.js. Talks to the backend from the browser.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: aviation-frontend
+    runtime: node
+    plan: free
+    rootDir: web
+    buildCommand: npm install && npm run build
+    startCommand: npm start -- -p $PORT
+    envVars:
+      # Full https URL of the backend service. MUST be set before the build,
+      # because NEXT_PUBLIC_* values are baked in at build time.
+      #   e.g. https://aviation-backend.onrender.com
+      - key: NEXT_PUBLIC_API_BASE
+        sync: false
+      # Optional: override the demo login (defaults to admin / admin123).
+      - key: NEXT_PUBLIC_LOGIN_USER
+        sync: false
+      - key: NEXT_PUBLIC_LOGIN_PASS
+        sync: false
